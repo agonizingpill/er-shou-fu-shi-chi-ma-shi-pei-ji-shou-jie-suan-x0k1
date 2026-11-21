@@ -1,0 +1,1 @@
+export const ROLES={operator:'寄售顾问',supervisor:'店长',viewer:'账目查阅'};export const STATES={unmeasured:'待实测',listed:'在架可试',held:'排他留衣',sold:'已售',inspection:'待复检',withdrawn:'已撤回',reserved:'已预约',cancelled:'已释放',completed:'已成交',returned:'已退货',settled:'已结算',pending:'待复检',inspected:'已复检',queued:'计算中',ready:'已适配',failed:'计算失败',active:'有效协议'};
