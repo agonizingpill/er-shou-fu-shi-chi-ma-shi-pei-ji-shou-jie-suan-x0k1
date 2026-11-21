@@ -5,17 +5,39 @@ from .models import *
 from .schemas import *
 from .common import *
 from .security import current,allow
-from . import consignment_service as consignment,fit_service as fit,fitting_service as fitting,sale_service as sale,return_service as returns,settlement_service as settlement
+from . import consignment_service as consignment,fit_service as fit,fitting_service as fitting,sale_service as sale,return_service as returns,settlement_service as settlement,match_service as match
 router=APIRouter()
+def push(ids):
+ if not ids:return
+ try:redis.from_url(os.environ['REDIS_URL'],socket_connect_timeout=1,socket_timeout=2).rpush('resale:match',*ids)
+ except Exception:pass
 def change(u,action,fn,supervisor=False):
  allow(u,*(['supervisor'] if supervisor else ['operator','supervisor']))
- with Session() as s:x=fn(s);audit(s,u,action,x);s.commit();return dump(x)
+ with Session() as s:
+  x=fn(s);audit(s,u,action,x);s.flush();ids=match.outbox(s);s.commit();out=dump(x)
+ push(ids);return out
+def request_change(u,action,fn):
+ allow(u,'operator','supervisor')
+ with Session() as s:
+  r,_=fn(s);audit(s,u,action,r);s.flush();ids=match.outbox(s);detail=match.detail(s,r);s.commit()
+ push(ids);return detail
 @router.get('/register')
 def register(u=Depends(current)):
  with Session() as s:return {n:[dump(x) for x in rows(s,c)] for n,c in [('consignors',Consignor),('agreements',Agreement),('amendments',Amendment),('garments',Garment),('measurements',Measurement),('profiles',FitProfile),('assessments',FitAssessment),('fittings',Fitting),('sales',Sale),('returns',Return),('payouts',Payout),('withdrawals',Withdrawal),('clock',Shop)]}
 @router.get('/audit')
 def audits(u=Depends(current)):
  with Session() as s:return [dump(x) for x in rows(s,Audit)]
+@router.get('/match-requests')
+def match_requests(u=Depends(current)):
+ with Session() as s:
+  ids=[r.id for r in rows(s,GarmentRequest)]
+  out=[match.detail(s,s.get(GarmentRequest,i)) for i in ids];s.commit();return out
+@router.post('/match-requests')
+def match_create(d:MatchRequestIn,u=Depends(current)):return request_change(u,'登记求衣单',lambda s:match.create(s,d.model_dump()))
+@router.post('/match-requests/{id}/budget')
+def match_budget(id:int,d:MatchBudgetIn,u=Depends(current)):return request_change(u,'修改求衣预算',lambda s:match.budget(s,id,d.model_dump()))
+@router.post('/match-requests/{id}/retry')
+def match_retry(id:int,u=Depends(current)):return request_change(u,'重试求衣匹配',lambda s:match.retry(s,id))
 @router.post('/consignors')
 def consignors(d:ConsignorIn,u=Depends(current)):return change(u,'寄售人登记',lambda s:consignment.consignor(s,d.model_dump()))
 @router.post('/agreements')

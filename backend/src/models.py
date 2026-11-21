@@ -1,4 +1,4 @@
-from sqlalchemy import Column,Integer,String,Float,ForeignKey,JSON,CheckConstraint
+from sqlalchemy import Column,Integer,String,Float,ForeignKey,JSON,CheckConstraint,UniqueConstraint
 from .database import Base
 class User(Base):
  __tablename__='users'
@@ -46,3 +46,15 @@ class Withdrawal(Base):
 class Audit(Base):
  __tablename__='audit'
  id=Column(Integer,primary_key=True);actor=Column(String(160),nullable=False);action=Column(String(100),nullable=False);detail=Column(String(500),nullable=False)
+class GarmentRequest(Base):
+ __tablename__='garment_requests'
+ id=Column(Integer,primary_key=True);profile_id=Column(Integer,ForeignKey('profiles.id'),nullable=False);budget_cents=Column(Integer,nullable=False);state=Column(String(20),default='open',nullable=False);revision=Column(Integer,default=0,nullable=False);created_at=Column(String(32),nullable=False)
+ __table_args__=(CheckConstraint('budget_cents>0 AND revision>=0'),)
+class MatchTask(Base):
+ __tablename__='match_tasks'
+ id=Column(Integer,primary_key=True);request_id=Column(Integer,ForeignKey('garment_requests.id'),nullable=False);revision=Column(Integer,nullable=False);garment_id=Column(Integer,ForeignKey('garments.id'),nullable=False);state=Column(String(20),default='queued',nullable=False);attempts=Column(Integer,default=0,nullable=False);error=Column(String(500),default='');created_at=Column(String(32),nullable=False);queued_at=Column(String(32),default='',nullable=False);started_at=Column(String(32),default='',nullable=False);pushed_at=Column(String(32),nullable=True)
+ __table_args__=(UniqueConstraint('request_id','revision','garment_id',name='uq_match_task'),)
+class MatchCandidate(Base):
+ __tablename__='match_candidates'
+ id=Column(Integer,primary_key=True);request_id=Column(Integer,ForeignKey('garment_requests.id'),nullable=False);revision=Column(Integer,nullable=False);garment_id=Column(Integer,ForeignKey('garments.id'),nullable=False);label=Column(String(10),nullable=False);result=Column(JSON,nullable=False);created_at=Column(String(32),nullable=False)
+ __table_args__=(UniqueConstraint('request_id','revision','garment_id',name='uq_match_candidate'),)

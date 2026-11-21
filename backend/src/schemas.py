@@ -17,6 +17,10 @@ class ProfileIn(Input):
  code:str=Field(min_length=2,max_length=40);chest:float=Field(ge=40,le=180);shoulder:float=Field(ge=20,le=80)
 class AssessmentIn(Input):
  garment_id:int;profile_id:int
+class MatchRequestIn(Input):
+ profile_id:int;budget_cents:int=Field(gt=0,le=10000000)
+class MatchBudgetIn(Input):
+ budget_cents:int=Field(gt=0,le=10000000)
 class FittingIn(Input):
  garment_id:int;profile_id:int;slot:int=Field(ge=1,le=2);starts:str;ends:str
 class SaleIn(Input):

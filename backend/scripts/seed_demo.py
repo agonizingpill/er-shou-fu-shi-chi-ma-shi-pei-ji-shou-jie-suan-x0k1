@@ -2,6 +2,7 @@ from src.database import Base,engine,Session
 from src.models import *
 from src.security import password_hash
 from src.common import rows
+from src import match_service as match
 
 def seed():
  Base.metadata.create_all(engine)
@@ -16,5 +17,12 @@ def seed():
    for code,title,ag,state in [('G031','烟苔绿短外套',ags[0],'listed'),('G032','复检中的棉衬衣',ags[1],'inspection'),('G033','期满未售针织衫',ags[2],'listed'),('G034','赭色直筒外套',ags[0],'listed')]:
     g=Garment(code=code,title=title,agreement_id=ag.id,condition='八成新，领口轻微使用痕迹，无破损',price_cents=22000,state=state);s.add(g);s.flush();s.add(Measurement(garment_id=g.id,chest=96,shoulder=39,length=58,elasticity=.2,cut=1))
    s.flush();g=next(g for g in rows(s,Garment) if g.code=='G032');f=Fitting(garment_id=g.id,profile_id=prof.id,slot=1,starts='2026-11-16T15:00:00',ends='2026-11-16T16:00:00',state='completed');s.add(f);s.flush();sale=Sale(fitting_id=f.id,garment_id=g.id,price_cents=22000,commission_bp=2000,commission_cents=4400,net_cents=17600,sold_at='2026-11-16T15:10:00',return_deadline='2026-11-23T15:10:00',state='returned');s.add(sale);s.flush();s.add(Return(sale_id=sale.id,reason='买家反馈肩部偏紧，已按原样退回待复检'))
+  seed_ids=[]
+  if not rows(s,GarmentRequest) and any(p.code=='P031' for p in rows(s,FitProfile)):
+   s.flush();prof=next(p for p in rows(s,FitProfile) if p.code=='P031');_,ids=match.create(s,{'profile_id':prof.id,'budget_cents':22000});s.flush();seed_ids=match.outbox(s)
   s.commit()
+ if seed_ids:
+  try:
+   import os,redis;redis.from_url(os.environ['REDIS_URL'],socket_connect_timeout=1,socket_timeout=2).rpush('resale:match',*seed_ids)
+  except Exception:pass
 if __name__=='__main__':seed()

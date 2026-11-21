@@ -1,5 +1,6 @@
 from .models import *
 from .common import *
+from . import match_service as match
 def payout(s,d):
  c=lock(s);sale=get(s,Sale,d['sale_id']);g=garment(s,sale.garment_id);a=get(s,Agreement,g.agreement_id)
  if sale.state!='completed':fail('只有未退货未结算成交可结算')
@@ -12,8 +13,8 @@ def withdraw(s,id,d):
  if g.state not in ['unmeasured','listed','held']:fail('已售、待复检或已撤回衣物不可撤回')
  for f in rows(s,Fitting):
   if f.garment_id==g.id and f.state=='reserved':f.state='cancelled'
- x=Withdrawal(garment_id=g.id,reason=d['reason'],returned_at=c.now);s.add(x);g.state='withdrawn';s.flush();return x
+ x=Withdrawal(garment_id=g.id,reason=d['reason'],returned_at=c.now);s.add(x);g.state='withdrawn';s.flush();match.sync(s,g);return x
 def clock(s,d):
  c=lock(s);t=time(d['now'])
  if t<time(c.now):fail('演示时钟不能倒退')
- c.now=t.isoformat();return c
+ c.now=t.isoformat();match.reconcile(s);return c

@@ -1,3 +1,6 @@
 ROLES=('operator','supervisor','viewer')
 GARMENT_STATES=('unmeasured','listed','held','sold','inspection','withdrawn')
 FIT_LABELS=('合身','偏紧','偏松')
+REQUEST_STATES=('open',)
+MATCH_TASK_STATES=('queued','running','done','skipped','stale','failed')
+CANDIDATE_LABELS=('合身',)
